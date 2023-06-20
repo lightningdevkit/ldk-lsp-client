@@ -8,6 +8,8 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt;
 
+use crate::channel_request;
+
 const LSPS_MESSAGE_SERIALIZED_STRUCT_NAME: &str = "LSPSMessage";
 const JSONRPC_FIELD_KEY: &str = "jsonrpc";
 const JSONRPC_FIELD_VALUE: &str = "2.0";
@@ -100,6 +102,7 @@ impl From<LSPS0Message> for LSPSMessage {
 pub enum LSPSMessage {
 	Invalid,
 	LSPS0(LSPS0Message),
+	LSPS1(channel_request::msgs::Message)
 }
 
 impl LSPSMessage {
@@ -114,6 +117,9 @@ impl LSPSMessage {
 	pub fn get_request_id_and_method(&self) -> Option<(String, String)> {
 		match self {
 			LSPSMessage::LSPS0(LSPS0Message::Request(request_id, request)) => {
+				Some((request_id.0.clone(), request.method().to_string()))
+			}
+			LSPSMessage::LSPS1(channel_request::msgs::Message::Request(request_id, request)) => {
 				Some((request_id.0.clone(), request.method().to_string()))
 			}
 			_ => None,
