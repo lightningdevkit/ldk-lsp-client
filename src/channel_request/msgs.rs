@@ -158,7 +158,7 @@ pub struct GetOrderRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct GetOrderResponse {
-	pub response: OrderState,
+	pub response: Order,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -187,7 +187,6 @@ pub enum Response {
 	GetOrder(GetOrderResponse),
 	GetOrderError(ResponseError),
 }
-
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Message {
