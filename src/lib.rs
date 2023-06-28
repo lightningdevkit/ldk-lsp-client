@@ -22,5 +22,6 @@ mod channel_request;
 mod jit_channel;
 mod transport;
 mod utils;
+pub mod events;
 
 pub use transport::message_handler::{LiquidityManager, LiquidityProviderConfig};
