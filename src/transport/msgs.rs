@@ -8,6 +8,8 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt;
 
+use crate::channel_request;
+
 const LSPS_MESSAGE_SERIALIZED_STRUCT_NAME: &str = "LSPSMessage";
 const JSONRPC_FIELD_KEY: &str = "jsonrpc";
 const JSONRPC_FIELD_VALUE: &str = "2.0";
@@ -35,7 +37,7 @@ impl wire::Type for RawLSPSMessage {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RequestId(pub String);
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -86,6 +88,7 @@ impl TryFrom<LSPSMessage> for LSPS0Message {
 		match message {
 			LSPSMessage::Invalid => Err(()),
 			LSPSMessage::LSPS0(message) => Ok(message),
+			LSPSMessage::LSPS1(_) => Err(()),
 		}
 	}
 }
@@ -100,6 +103,7 @@ impl From<LSPS0Message> for LSPSMessage {
 pub enum LSPSMessage {
 	Invalid,
 	LSPS0(LSPS0Message),
+	LSPS1(channel_request::msgs::Message)
 }
 
 impl LSPSMessage {
@@ -114,6 +118,9 @@ impl LSPSMessage {
 	pub fn get_request_id_and_method(&self) -> Option<(String, String)> {
 		match self {
 			LSPSMessage::LSPS0(LSPS0Message::Request(request_id, request)) => {
+				Some((request_id.0.clone(), request.method().to_string()))
+			}
+			LSPSMessage::LSPS1(channel_request::msgs::Message::Request(request_id, request)) => {
 				Some((request_id.0.clone(), request.method().to_string()))
 			}
 			_ => None,
@@ -151,6 +158,47 @@ impl Serialize for LSPSMessage {
 					}
 					LSPS0Response::ListProtocolsError(error) => {
 						jsonrpc_object.serialize_field(JSONRPC_ERROR_FIELD_KEY, error)?;
+					}
+				}
+			}
+
+			LSPSMessage::LSPS1(channel_request::msgs::Message::Request(request_id, request)) => {
+				jsonrpc_object.serialize_field(JSONRPC_ID_FIELD_KEY, &request_id.0)?;
+				jsonrpc_object.serialize_field(JSONRPC_METHOD_FIELD_KEY, request.method())?;
+
+				match request {
+					channel_request::msgs::Request::GetInfo(params) => {
+						jsonrpc_object.serialize_field(JSONRPC_PARAMS_FIELD_KEY, params)?
+					}
+					channel_request::msgs::Request::CreateOrder(params) => {
+						jsonrpc_object.serialize_field(JSONRPC_PARAMS_FIELD_KEY, params)?
+					}
+					channel_request::msgs::Request::GetOrder(params) => {
+						jsonrpc_object.serialize_field(JSONRPC_PARAMS_FIELD_KEY, params)?
+					}
+				}
+			}
+			LSPSMessage::LSPS1(channel_request::msgs::Message::Response(request_id, response)) => {
+				jsonrpc_object.serialize_field(JSONRPC_ID_FIELD_KEY, &request_id.0)?;
+
+				match response {
+					channel_request::msgs::Response::GetInfo(result) => {
+						jsonrpc_object.serialize_field(JSONRPC_RESULT_FIELD_KEY, result)?
+					}
+					channel_request::msgs::Response::GetInfoError(error) => {
+						jsonrpc_object.serialize_field(JSONRPC_RESULT_FIELD_KEY, error)?
+					}
+					channel_request::msgs::Response::CreateOrder(result) => {
+						jsonrpc_object.serialize_field(JSONRPC_ERROR_FIELD_KEY, result)?
+					}
+					channel_request::msgs::Response::OrderError(error) => {
+						jsonrpc_object.serialize_field(JSONRPC_RESULT_FIELD_KEY, error)?
+					}
+					channel_request::msgs::Response::GetOrder(result) => {
+						jsonrpc_object.serialize_field(JSONRPC_ERROR_FIELD_KEY, result)?
+					}
+					&channel_request::msgs::Response::GetOrderError(error) => {
+						jsonrpc_object.serialize_field(JSONRPC_ERROR_FIELD_KEY, error)?	
 					}
 				}
 			}

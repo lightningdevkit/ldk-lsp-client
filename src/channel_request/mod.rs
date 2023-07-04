@@ -8,3 +8,7 @@
 // licenses.
 
 //! Types and primitives that implement the LSPS1: Channel Request specification.
+pub mod channel_manager;
+pub mod event;
+pub mod msgs;
+mod utils;
